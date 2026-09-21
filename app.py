@@ -201,7 +201,8 @@ st.html("""
 def load_model_and_explainer():
     """Load model, explainer, and feature names with caching."""
     if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError("Model file not found. Please run src/train_model.py first.")
+        from src.train_model import train_and_evaluate_model
+        train_and_evaluate_model()
     
     model = joblib.load(MODEL_PATH)
     explainer = get_shap_explainer(model)
@@ -221,7 +222,8 @@ def load_model_and_explainer():
 def load_dataset():
     """Load cleaned dataset for selection."""
     if not os.path.exists(CLEAN_CSV_PATH):
-        raise FileNotFoundError("Clean dataset not found. Please run src/data_prep.py first.")
+        from src.data_prep import process_and_save_clean_data
+        process_and_save_clean_data()
     df = pd.read_csv(CLEAN_CSV_PATH)
     df["Date"] = pd.to_datetime(df["Date"])
     return df

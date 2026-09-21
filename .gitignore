@@ -14,16 +14,18 @@ ENV/
 env.bak/
 venv.bak/
 
-# Environment variables
+# Environment variables (strictly protected)
 .env
 .env.local
+.env.*
 
-# Data and models
+# Large raw raw data downloads
 data/raw/*
 !data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
-models/*.pkl
+
+# Allow processed data and serialized models for Streamlit deployment
+!data/processed/clean_data.csv
+!models/*.pkl
 
 # Streamlit
 .streamlit/
