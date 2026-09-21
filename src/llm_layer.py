@@ -1,7 +1,8 @@
 """
 LLM Conversational Layer for AQI Prediction.
 Converts SHAP explainability values into plain-English policymaker insights.
-Supports OpenRouter API (sk-or-...) and Google Gemini API with a robust rule-based fallback.
+Primary model: IBM Granite (via OpenRouter API).
+Fallbacks: Google Gemini, Meta Llama, DeepSeek, and a robust rule-based engine.
 """
 
 import os
@@ -84,7 +85,15 @@ def get_rule_based_fallback(
 
 
 def call_openrouter_api(prompt: str, api_key: str) -> str:
-    """Invoke OpenRouter API (supports Gemini 2.5, DeepSeek, Llama models)."""
+    """Invoke OpenRouter API with IBM Granite as primary model.
+    
+    Model priority:
+    1. IBM Granite 4.2 8B (primary — IBM foundation model)
+    2. IBM Granite 4.1 8B (IBM fallback)
+    3. Google Gemini 2.5 Flash (secondary fallback)
+    4. Meta Llama 3.3 70B (tertiary fallback)
+    5. DeepSeek Chat (quaternary fallback)
+    """
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key.strip()}",
@@ -93,12 +102,12 @@ def call_openrouter_api(prompt: str, api_key: str) -> str:
         "X-Title": "AirLens AQI Explainability"
     }
 
-    # Try fast, reliable models available on OpenRouter
+    # IBM Granite models are prioritized, with other models as fallbacks
     models_to_try = [
-        "google/gemini-2.5-flash",
-        "meta-llama/llama-3.3-70b-instruct",
-        "deepseek/deepseek-chat",
-        "anthropic/claude-3-haiku"
+        "ibm-granite/granite-4.2-8b",       # Primary: IBM Granite 4.2
+        "google/gemini-2.5-flash",           # Fallback: Google Gemini
+        "meta-llama/llama-3.3-70b-instruct", # Fallback: Meta Llama
+        "deepseek/deepseek-chat",            # Fallback: DeepSeek
     ]
 
     for model_id in models_to_try:
@@ -116,8 +125,13 @@ def call_openrouter_api(prompt: str, api_key: str) -> str:
                     }
                 ],
                 "temperature": 0.4,
-                "max_tokens": 250
+                "max_tokens": 600
             }
+
+            # IBM Granite is a reasoning model — set low effort so it
+            # doesn't consume the entire token budget on internal thinking
+            if "granite" in model_id:
+                payload["reasoning"] = {"effort": "low"}
 
             req = urllib.request.Request(
                 url,
@@ -126,11 +140,14 @@ def call_openrouter_api(prompt: str, api_key: str) -> str:
                 method="POST"
             )
 
-            with urllib.request.urlopen(req, timeout=12) as response:
+            with urllib.request.urlopen(req, timeout=20) as response:
                 result = json.loads(response.read().decode("utf-8"))
                 if "choices" in result and len(result["choices"]) > 0:
-                    text = result["choices"][0]["message"]["content"].strip()
+                    msg = result["choices"][0].get("message", {})
+                    text = msg.get("content") or ""
+                    text = text.strip() if text else ""
                     if text:
+                        print(f"[llm_layer] [OK] Response from {model_id}")
                         return text
         except Exception as e:
             print(f"[llm_layer] OpenRouter attempt with {model_id} failed: {e}")

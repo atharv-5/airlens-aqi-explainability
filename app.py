@@ -614,7 +614,7 @@ def main():
             </div>
             <div>
                 <strong>Explainability:</strong> SHAP TreeExplainer & Local Attribution.<br>
-                <strong>Conversational Layer:</strong> OpenRouter & Gemini API with Domain Expert Fallback.
+                <strong>Conversational Layer:</strong> IBM Granite (via OpenRouter) with multi-model fallback &amp; Domain Expert Engine.
             </div>
         </div>
     </div>
