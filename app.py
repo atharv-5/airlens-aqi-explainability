@@ -264,11 +264,10 @@ def main():
         city_df = clean_df[clean_df["City"] == selected_city].sort_values("Date").reset_index(drop=True)
 
         if mode == "📅 Historical Date Lookup":
-            # Year filter for instant access to 2026, 2025, etc.
+            # Year filter for 2020-2025
             available_years = sorted(city_df["Date"].dt.year.unique().tolist(), reverse=True)
-            # Default to 2026 if available
-            default_year_idx = 0 if 2026 in available_years else 0
-            selected_year = st.selectbox("Filter Year", available_years, index=default_year_idx)
+            default_year_idx = available_years.index(2025) if 2025 in available_years else 0
+            selected_year = st.selectbox("Filter Year (2020-2025)", available_years, index=default_year_idx)
 
             year_filtered_df = city_df[city_df["Date"].dt.year == selected_year]
             date_options = year_filtered_df["Date"].dt.strftime("%Y-%m-%d").tolist()
@@ -293,8 +292,8 @@ def main():
         else:
             # What-if Mode
             st.subheader("Simulate Custom Pollutant Levels")
-            selected_date_str = "Scenario Simulation (2026)"
-            month_val = st.slider("Month of Year", 1, 12, 9, help="9 = September, 11 = November (Winter inversion)")
+            selected_date_str = "Scenario Simulation (2020-2025)"
+            month_val = st.slider("Month of Year", 1, 12, 11, help="11 = November (Winter inversion)")
             dow_val = st.slider("Day of Week (0=Mon, 6=Sun)", 0, 6, 0)
             season_val = get_season(month_val)
             st.caption(f"Climatological Season: **{season_val}**")
@@ -595,16 +594,16 @@ def main():
     # ROW 6: CREDIBILITY FOOTER
     # =========================================================================
     st.markdown("---")
-    r2_display = metrics.get("r2_score", 0.9817)
-    rmse_display = metrics.get("rmse", 10.66)
-    mae_display = metrics.get("mae", 8.09)
+    r2_display = metrics.get("r2_score", 0.9901)
+    rmse_display = metrics.get("rmse", 9.11)
+    mae_display = metrics.get("mae", 7.01)
     split_info = metrics.get("split_type", "Time-based chronological split")
 
     st.html(f"""
     <div class="footer-bar">
         <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
             <div>
-                <strong>Data Coverage:</strong> Continuous daily records through <strong>September 2026</strong> (Delhi, Mumbai, Bengaluru).<br>
+                <strong>Data Coverage:</strong> Continuous daily records <strong>2020 through 2025</strong> (Delhi, Mumbai, Bengaluru).<br>
                 <strong>Target Variable:</strong> Continuous Air Quality Index (AQI) via Regression.
             </div>
             <div>
@@ -613,7 +612,7 @@ def main():
             </div>
             <div>
                 <strong>Explainability:</strong> SHAP TreeExplainer & Local Attribution.<br>
-                <strong>Conversational Layer:</strong> Google Gemini API with Domain Expert Fallback.
+                <strong>Conversational Layer:</strong> OpenRouter & Gemini API with Domain Expert Fallback.
             </div>
         </div>
     </div>

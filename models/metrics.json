@@ -1,12 +1,12 @@
 {
   "model_type": "XGBoost Regressor (Tree-based ensemble)",
   "split_type": "Time-based chronological split (80/20)",
-  "split_date": "2024-05-18",
-  "train_samples": 8932,
-  "test_samples": 2571,
-  "r2_score": 0.9817,
-  "rmse": 10.66,
-  "mae": 8.09,
+  "split_date": "2024-10-19",
+  "train_samples": 5259,
+  "test_samples": 1317,
+  "r2_score": 0.9901,
+  "rmse": 9.11,
+  "mae": 7.01,
   "features": [
     "PM2.5",
     "PM10",

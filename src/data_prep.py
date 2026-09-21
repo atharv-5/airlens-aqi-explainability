@@ -256,16 +256,20 @@ def build_features(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series, List[str]
 
 
 def process_and_save_clean_data(raw_path: str = RAW_CSV_PATH, out_path: str = CLEAN_CSV_PATH) -> pd.DataFrame:
-    """End-to-end processing pipeline saving to clean_data.csv with 2025/2026 data."""
+    """End-to-end processing pipeline saving to clean_data.csv strictly for 2020-2025."""
     download_dataset_if_needed(raw_path)
     raw_df = load_raw_data(raw_path)
     clean_df = clean_air_quality_data(raw_df)
-    extended_df = extend_dataset_to_recent_years(clean_df, end_date="2026-09-21")
+    extended_df = extend_dataset_to_recent_years(clean_df, end_date="2025-12-31")
+
+    # Strictly filter for 2020 through 2025 (dropping 2015-2019)
+    filtered_df = extended_df[(extended_df["Date"] >= "2020-01-01") & (extended_df["Date"] <= "2025-12-31")].copy()
+    filtered_df = filtered_df.sort_values(by=["City", "Date"]).reset_index(drop=True)
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    extended_df.to_csv(out_path, index=False)
-    print(f"[data_prep] Saved cleaned dataset to {out_path} ({len(extended_df)} rows).")
-    return extended_df
+    filtered_df.to_csv(out_path, index=False)
+    print(f"[data_prep] Saved cleaned dataset to {out_path} ({len(filtered_df)} rows from {filtered_df['Date'].min()} to {filtered_df['Date'].max()}).")
+    return filtered_df
 
 
 if __name__ == "__main__":
