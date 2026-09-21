@@ -1,0 +1,19 @@
+[
+  "PM2.5",
+  "PM10",
+  "NO2",
+  "SO2",
+  "CO",
+  "O3",
+  "month",
+  "day_of_week",
+  "aqi_lag_1",
+  "aqi_rolling_3d",
+  "city_Bengaluru",
+  "city_Delhi",
+  "city_Mumbai",
+  "season_Monsoon",
+  "season_Post-Monsoon",
+  "season_Summer",
+  "season_Winter"
+]

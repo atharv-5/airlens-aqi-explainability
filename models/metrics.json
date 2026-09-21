@@ -1,0 +1,32 @@
+{
+  "model_type": "XGBoost Regressor (Tree-based ensemble)",
+  "split_type": "Time-based chronological split (80/20)",
+  "split_date": "2019-05-27",
+  "train_samples": 3478,
+  "test_samples": 1206,
+  "r2_score": 0.9751,
+  "rmse": 14.25,
+  "mae": 10.01,
+  "features": [
+    "PM2.5",
+    "PM10",
+    "NO2",
+    "SO2",
+    "CO",
+    "O3",
+    "month",
+    "day_of_week",
+    "aqi_lag_1",
+    "aqi_rolling_3d",
+    "city_Bengaluru",
+    "city_Delhi",
+    "city_Mumbai",
+    "season_Monsoon",
+    "season_Post-Monsoon",
+    "season_Summer",
+    "season_Winter"
+  ],
+  "n_estimators": 300,
+  "max_depth": 6,
+  "learning_rate": 0.05
+}
