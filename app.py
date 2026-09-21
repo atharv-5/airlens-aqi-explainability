@@ -11,6 +11,7 @@ import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from matplotlib.patches import Patch
 from dotenv import load_dotenv
 
 # Load local environment
@@ -42,7 +43,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom Styling for polished, high-contrast visual design
+# Custom Styling for polished, high-contrast visual design that adapts to dark and light modes
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -51,89 +52,136 @@ st.markdown("""
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
+    /* Top Hero Header */
     .hero-header {
-        background: linear-gradient(135deg, #0d3b66 0%, #004e89 50%, #1a759f 100%);
-        padding: 24px 30px;
-        border-radius: 16px;
+        background: linear-gradient(135deg, #0f2b48 0%, #154c79 50%, #1d70a2 100%);
+        padding: 26px 32px;
+        border-radius: 18px;
         color: white;
         margin-bottom: 25px;
-        box-shadow: 0 4px 20px rgba(0, 78, 137, 0.15);
+        box-shadow: 0 8px 32px rgba(15, 43, 72, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.12);
     }
     .hero-title {
-        font-size: 2.1rem;
+        font-size: 2.2rem;
         font-weight: 800;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         color: #ffffff;
+        letter-spacing: -0.5px;
     }
     .hero-subtitle {
         font-size: 1.05rem;
-        color: #e0f2fe;
+        color: #e2f1fd;
         font-weight: 400;
         opacity: 0.95;
     }
     .sustainability-pill {
         display: inline-block;
-        background: rgba(255, 255, 255, 0.2);
-        padding: 4px 12px;
+        background: rgba(255, 255, 255, 0.16);
+        padding: 5px 14px;
         border-radius: 20px;
-        font-size: 0.82rem;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        margin-top: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.7px;
+        margin-top: 10px;
         text-transform: uppercase;
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.28);
     }
     
+    /* Sleek Theme-Adaptive Metric Cards */
     .metric-card {
-        background: white;
-        border-radius: 14px;
-        padding: 20px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-        margin-bottom: 16px;
-        transition: transform 0.2s ease;
+        background: rgba(30, 41, 59, 0.85);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 22px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        margin-bottom: 20px;
+        color: #f8fafc;
     }
     
     .aqi-score-container {
         display: flex;
         align-items: baseline;
-        gap: 12px;
-        margin: 10px 0;
+        gap: 16px;
+        margin: 12px 0 16px 0;
     }
     .aqi-number {
-        font-size: 3.6rem;
+        font-size: 4rem;
         font-weight: 800;
         line-height: 1;
+        letter-spacing: -1px;
     }
     .aqi-badge {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: 25px;
-        font-size: 1rem;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 30px;
+        font-size: 1.05rem;
         font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
     
+    /* Pollutant Mini Grid */
+    .pollutant-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .pollutant-chip {
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 10px 12px;
+        text-align: center;
+    }
+    .pollutant-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+    }
+    .pollutant-val {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #f1f5f9;
+    }
+    .pollutant-unit {
+        font-size: 0.72rem;
+        font-weight: 500;
+        color: #64748b;
+    }
+    
+    /* Policy Insight Box */
     .llm-insight-box {
-        background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-        border-left: 5px solid #0077b6;
-        border-radius: 0 14px 14px 0;
-        padding: 18px 22px;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(12px);
+        border-left: 5px solid #38bdf8;
+        border-radius: 4px 16px 16px 4px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 20px 24px;
         margin-top: 15px;
         font-size: 1.02rem;
-        line-height: 1.6;
-        color: #1e293b;
+        line-height: 1.65;
+        color: #e2e8f0;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     }
     
+    /* Footer */
     .footer-bar {
         margin-top: 40px;
-        padding: 20px;
-        background: #f8fafc;
-        border-top: 1px solid #e2e8f0;
-        border-radius: 12px;
+        padding: 22px 26px;
+        background: rgba(15, 23, 42, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
         font-size: 0.88rem;
-        color: #64748b;
+        color: #94a3b8;
+        line-height: 1.6;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -208,7 +256,7 @@ def main():
         if mode == "📅 Historical Date Lookup":
             date_options = city_df["Date"].dt.strftime("%Y-%m-%d").tolist()
             # Pick a representative recent date by default
-            default_idx = len(date_options) - 30 if len(date_options) > 30 else 0
+            default_idx = len(date_options) - 1 if len(date_options) > 0 else 0
             selected_date_str = st.selectbox("Select Date", date_options, index=default_idx)
             
             matched_row = city_df[city_df["Date"].dt.strftime("%Y-%m-%d") == selected_date_str].iloc[0]
@@ -303,13 +351,13 @@ def main():
         )
 
     # --- MAIN DASHBOARD LAYOUT ---
-    col_left, col_right = st.columns([1.1, 1.4], gap="medium")
+    col_left, col_right = st.columns([1.15, 1.45], gap="large")
 
     # Left Column: Hero AQI Card & Pollutant Diagnostics
     with col_left:
         st.markdown(f"""
         <div class="metric-card" style="border-top: 6px solid {bucket['color']};">
-            <div style="font-size: 0.95rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+            <div style="font-size: 0.95rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px;">
                 {selected_city} • {selected_date_str}
             </div>
             <div class="aqi-score-container">
@@ -322,11 +370,11 @@ def main():
                     </div>
                 </div>
             </div>
-            <div style="font-size: 0.98rem; font-weight: 500; color: #334155; margin-top: 6px;">
-                <strong>Health Advisory:</strong> {bucket['advisory']}
+            <div style="font-size: 1rem; font-weight: 500; color: #f1f5f9; margin-top: 4px; line-height: 1.5;">
+                <strong style="color: #38bdf8;">Health Advisory:</strong> {bucket['advisory']}
             </div>
-            <div style="font-size: 0.86rem; color: #64748b; margin-top: 8px;">
-                <strong>Guidance:</strong> {bucket['who_guidance']}
+            <div style="font-size: 0.88rem; color: #94a3b8; margin-top: 10px; line-height: 1.5;">
+                <strong style="color: #cbd5e1;">Guidance:</strong> {bucket['who_guidance']}
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -337,21 +385,29 @@ def main():
             st.metric(
                 label="Historical Ground Truth AQI",
                 value=f"{actual_aqi:.0f}",
-                delta=f"{delta:+.1f} model error",
+                delta=f"{delta:+.1f} model variance",
                 delta_color="inverse"
             )
 
-        # Criteria Pollutant Snapshot
+        # Criteria Pollutant Snapshot Mini-Grid (prevents text truncation)
         st.markdown("#### 📊 Measured Pollutant Concentrations")
-        p_cols = st.columns(3)
-        for idx, col in enumerate(POLLUTANT_COLS):
+        p_html = ['<div class="pollutant-grid">']
+        for col in POLLUTANT_COLS:
             val = pollutant_inputs[col]
             unit = "mg/m³" if col == "CO" else "µg/m³"
-            with p_cols[idx % 3]:
-                st.metric(label=col, value=f"{val:.1f} {unit}")
+            p_html.append(f"""
+            <div class="pollutant-chip">
+                <div class="pollutant-label">{col}</div>
+                <div class="pollutant-val">{val:.1f}</div>
+                <div class="pollutant-unit">{unit}</div>
+            </div>
+            """)
+        p_html.append('</div>')
+        st.markdown("".join(p_html), unsafe_allow_html=True)
 
         # Scale progress indicator
-        st.markdown("#### 🎯 AQI Severity Scale")
+        st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+        st.markdown("#### 🎯 AQI Severity Spectrum")
         progress_val = min(1.0, max(0.0, predicted_aqi / 500.0))
         st.progress(progress_val)
         st.caption("0 (Good) ── 100 (Satisfactory) ── 200 (Moderate) ── 300 (Poor) ── 400 (Very Poor) ── 500 (Severe)")
@@ -359,38 +415,69 @@ def main():
     # Right Column: SHAP Local Explainability + LLM Insight
     with col_right:
         st.markdown("### 🔍 Model Explainability (SHAP Attributions)")
-        st.write("Identifies which environmental factors drove this specific prediction higher or lower relative to baseline.")
+        st.caption("Identifies which environmental factors pushed this prediction higher (+) or lower (-) relative to base.")
 
-        # Matplotlib Horizontal Bar Chart for local SHAP values
-        fig, ax = plt.subplots(figsize=(8, 4.2))
+        # Matplotlib Horizontal Bar Chart Styled for High-Contrast Dark & Light Theme
+        fig, ax = plt.subplots(figsize=(8.2, 4.4))
         
+        # Dark modern background to blend with Streamlit
+        fig.patch.set_facecolor('#1e293b')
+        ax.set_facecolor('#1e293b')
+
         feature_labels = [f["display_name"] for f in top_features][::-1]
         shap_scores = [f["shap_value"] for f in top_features][::-1]
-        colors = ["#e53935" if val > 0 else "#00897b" for val in shap_scores]
+        colors = ["#ef4444" if val > 0 else "#10b981" for val in shap_scores]
 
-        bars = ax.barh(range(len(top_features)), shap_scores, color=colors, height=0.55, edgecolor="none")
-        ax.axvline(0, color="#1e293b", linewidth=1.1, linestyle="--", alpha=0.7)
+        bars = ax.barh(range(len(top_features)), shap_scores, color=colors, height=0.52, edgecolor="none")
+        
+        # Reference center line
+        ax.axvline(0, color="#94a3b8", linewidth=1.2, linestyle="--", alpha=0.8)
+        
+        # Ticks and Labels
         ax.set_yticks(range(len(top_features)))
-        ax.set_yticklabels(feature_labels, fontsize=10, fontweight="semibold")
-        ax.set_xlabel("SHAP Value (Contribution in AQI Points)", fontsize=10, fontweight="bold", labelpad=8)
-        ax.grid(axis="x", linestyle=":", alpha=0.6)
+        ax.set_yticklabels(feature_labels, fontsize=10, fontweight="600", color="#f8fafc")
+        ax.tick_params(axis='x', colors='#cbd5e1', labelsize=9)
+        ax.tick_params(axis='y', colors='#f8fafc', length=0)
+        
+        ax.set_xlabel("SHAP Value (Contribution in AQI Points)", fontsize=10, fontweight="bold", color="#e2e8f0", labelpad=10)
+        ax.grid(axis="x", linestyle=":", color="#334155", alpha=0.7)
 
-        # Annotate bars
+        # Spines styling
+        for spine in ["top", "right", "left"]:
+            ax.spines[spine].set_visible(False)
+        ax.spines["bottom"].set_color("#475569")
+
+        # Dynamically set X limits to give ample room for annotations without collision
+        min_val = min(shap_scores) if shap_scores else 0
+        max_val = max(shap_scores) if shap_scores else 0
+        span = max(abs(min_val), abs(max_val), 10)
+        ax.set_xlim(-span * 1.35, span * 1.35)
+
+        # Annotate bars cleanly
         for bar in bars:
             w = bar.get_width()
             align = "left" if w >= 0 else "right"
-            offset = 1.0 if w >= 0 else -1.0
+            offset = span * 0.04 if w >= 0 else -span * 0.04
             ax.text(w + offset, bar.get_y() + bar.get_height() / 2, f"{w:+.1f}",
-                    va="center", ha=align, fontsize=9, fontweight="bold",
-                    color="#e53935" if w > 0 else "#00897b")
+                    va="center", ha=align, fontsize=9.5, fontweight="bold",
+                    color="#f87171" if w > 0 else "#34d399")
 
         # Custom legend patches
-        from matplotlib.patches import Patch
         legend_elements = [
-            Patch(facecolor="#e53935", label="Increases AQI (Pushes pollution up)"),
-            Patch(facecolor="#00897b", label="Decreases AQI (Improves air quality)")
+            Patch(facecolor="#ef4444", label="Increases AQI (Pushes pollution up)"),
+            Patch(facecolor="#10b981", label="Decreases AQI (Improves air quality)")
         ]
-        ax.legend(handles=legend_elements, loc="lower right", frameon=True, fontsize=8.5)
+        legend = ax.legend(
+            handles=legend_elements,
+            loc="lower right",
+            frameon=True,
+            fontsize=8.5,
+            facecolor="#0f172a",
+            edgecolor="#334155"
+        )
+        for text in legend.get_texts():
+            text.set_color("#e2e8f0")
+
         plt.tight_layout()
         st.pyplot(fig)
         plt.close(fig)
@@ -399,7 +486,7 @@ def main():
         st.markdown("### 💬 Plain-English Policy Briefing")
         st.markdown(f"""
         <div class="llm-insight-box">
-            <div style="font-weight: 700; color: #0077b6; margin-bottom: 6px; font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.5px;">
+            <div style="font-weight: 700; color: #38bdf8; margin-bottom: 8px; font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.8px;">
                 💡 AI Sustainability Insight (Translating SHAP to Action)
             </div>
             {ai_narrative}
