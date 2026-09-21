@@ -319,11 +319,11 @@ def main():
         st.markdown("---")
         st.subheader("🤖 LLM Configuration")
         user_gemini_key = st.text_input(
-            "Gemini API Key (Optional)",
+            "LLM API Key (OpenRouter or Gemini)",
             type="password",
-            help="Free key from Google AI Studio. If left empty, the built-in domain expert engine provides explanations."
+            help="Automatically loaded from .env (OPENROUTER_API_KEY). You can also enter or override it here."
         )
-        st.caption("🔒 Keys are processed in memory and never stored.")
+        st.caption("🔒 Keys are securely processed in memory and never stored.")
 
     # Construct feature row vector matching trained feature names
     row_dict = {}

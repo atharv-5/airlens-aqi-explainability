@@ -1,10 +1,12 @@
 """
 LLM Conversational Layer for AQI Prediction.
-Converts SHAP explainability values into plain-English policymaker insights
-using Google Gemini API (google-genai) with a robust rule-based fallback.
+Converts SHAP explainability values into plain-English policymaker insights.
+Supports OpenRouter API (sk-or-...) and Google Gemini API with a robust rule-based fallback.
 """
 
 import os
+import json
+import urllib.request
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
@@ -81,6 +83,79 @@ def get_rule_based_fallback(
     return " ".join(parts)
 
 
+def call_openrouter_api(prompt: str, api_key: str) -> str:
+    """Invoke OpenRouter API (supports Gemini 2.5, DeepSeek, Llama models)."""
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key.strip()}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost:8501",
+        "X-Title": "AirLens AQI Explainability"
+    }
+
+    # Try fast, reliable models available on OpenRouter
+    models_to_try = [
+        "google/gemini-2.5-flash",
+        "meta-llama/llama-3.3-70b-instruct",
+        "deepseek/deepseek-chat",
+        "anthropic/claude-3-haiku"
+    ]
+
+    for model_id in models_to_try:
+        try:
+            payload = {
+                "model": model_id,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are an expert environmental and air quality policy analyst. Provide short, compelling 2-3 sentence policy briefings."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.4,
+                "max_tokens": 250
+            }
+
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers=headers,
+                method="POST"
+            )
+
+            with urllib.request.urlopen(req, timeout=12) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                if "choices" in result and len(result["choices"]) > 0:
+                    text = result["choices"][0]["message"]["content"].strip()
+                    if text:
+                        return text
+        except Exception as e:
+            print(f"[llm_layer] OpenRouter attempt with {model_id} failed: {e}")
+            continue
+
+    raise RuntimeError("All OpenRouter models failed or key quota exceeded.")
+
+
+def call_gemini_api(prompt: str, api_key: str) -> str:
+    """Invoke direct Google Gemini SDK."""
+    from google import genai
+    client = genai.Client(api_key=api_key.strip())
+    for model_id in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+        try:
+            response = client.models.generate_content(
+                model=model_id,
+                contents=prompt,
+            )
+            if response and response.text:
+                return response.text.strip()
+        except Exception:
+            continue
+    raise RuntimeError("All Gemini SDK models failed.")
+
+
 def generate_explanation(
     city: str,
     date: str,
@@ -90,7 +165,7 @@ def generate_explanation(
 ) -> str:
     """
     Generate plain-English explanation for an AQI prediction and its SHAP factors.
-    Tries Google Gemini API first; seamlessly falls back to the domain expert engine.
+    Auto-detects OpenRouter or Gemini API keys, with intelligent rule-based fallback.
     """
     shap_features_formatted = format_shap_features_for_prompt(shap_features)
 
@@ -104,33 +179,35 @@ Top contributing factors:
 
 Explain what is driving this AQI level and what it means for that day's air quality (e.g., "unhealthy for sensitive groups"). Do not repeat raw numbers robotically — write it like a short news-style insight."""
 
-    key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    # Detect API Key from parameter or environment
+    key = (
+        api_key
+        or os.getenv("OPENROUTER_API_KEY")
+        or os.getenv("GEMINI_API_KEY")
+        or os.getenv("GOOGLE_API_KEY")
+    )
 
     if not key or key.strip() == "" or "your_" in key.lower():
-        # Clean rule-based fallback when key is not configured
+        # Fallback when no key is configured
         return get_rule_based_fallback(city, date, predicted_aqi, shap_features)
 
+    clean_key = key.strip()
+
+    # Route to OpenRouter if key starts with sk-or- or OPENROUTER_API_KEY is present
+    if clean_key.startswith("sk-or-") or os.getenv("OPENROUTER_API_KEY") == clean_key:
+        try:
+            print("[llm_layer] Using OpenRouter API...")
+            return call_openrouter_api(prompt, clean_key)
+        except Exception as e:
+            print(f"[llm_layer] OpenRouter call failed: {e}. Using rule fallback.")
+            return get_rule_based_fallback(city, date, predicted_aqi, shap_features)
+
+    # Otherwise route to Gemini SDK
     try:
-        from google import genai
-        client = genai.Client(api_key=key.strip())
-        
-        # We try modern standard gemini models
-        for model_id in ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"]:
-            try:
-                response = client.models.generate_content(
-                    model=model_id,
-                    contents=prompt,
-                )
-                if response and response.text:
-                    return response.text.strip()
-            except Exception:
-                continue
-
-        # If loop did not return, fallback
-        return get_rule_based_fallback(city, date, predicted_aqi, shap_features)
-
+        print("[llm_layer] Using Google Gemini SDK...")
+        return call_gemini_api(prompt, clean_key)
     except Exception as e:
-        print(f"[llm_layer] Gemini API invocation failed ({e}), using domain rule fallback.")
+        print(f"[llm_layer] Gemini API call failed: {e}. Using rule fallback.")
         return get_rule_based_fallback(city, date, predicted_aqi, shap_features)
 
 
@@ -140,5 +217,6 @@ if __name__ == "__main__":
         {"feature": "aqi_rolling_3d", "display_name": "3-Day Prior AQI Trend", "feature_value": 210.0, "shap_value": 25.1, "direction": "increases AQI"},
         {"feature": "O3", "display_name": "Tropospheric Ozone (O3)", "feature_value": 18.0, "shap_value": -12.4, "direction": "decreases AQI"}
     ]
-    explanation = generate_explanation("Delhi", "2020-11-15", 265.4, test_features)
-    print("Generated Explanation:\n", explanation)
+    explanation = generate_explanation("Delhi", "2026-09-21", 265.4, test_features)
+    print("\n--- GENERATED EXPLANATION ---")
+    print(explanation)
