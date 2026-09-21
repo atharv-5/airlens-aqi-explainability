@@ -398,15 +398,30 @@ def main():
         </div>
         """)
 
-        # Ground truth delta if present
+        # Ground truth comparison badge (friendly and informative for non-technical reviewers)
         if actual_aqi is not None:
-            delta = predicted_aqi - actual_aqi
-            st.metric(
-                label=f"Historical Baseline AQI ({selected_date_str})",
-                value=f"{actual_aqi:.0f}",
-                delta=f"{delta:+.1f} model error",
-                delta_color="inverse"
-            )
+            diff = abs(predicted_aqi - actual_aqi)
+            trend_label = "Higher than station (+)" if predicted_aqi >= actual_aqi else "Lower than station (-)"
+            st.html(f"""
+            <div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 18px; margin-top: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <div style="font-size: 0.74rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px;">
+                        Station Ground Truth Record
+                    </div>
+                    <div style="font-size: 1.45rem; font-weight: 800; color: #f8fafc; margin-top: 2px;">
+                        {actual_aqi:.0f} <span style="font-size: 0.82rem; font-weight: 600; color: #94a3b8;">AQI</span>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.72rem; font-weight: 600; color: #64748b; text-transform: uppercase;">
+                        Predicted vs. Actual
+                    </div>
+                    <span title="Variance indicates how closely the ML model's prediction matches the station's historical ground-truth recording." style="display: inline-block; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 3px 10px; border-radius: 16px; font-size: 0.8rem; font-weight: 700; margin-top: 3px;">
+                        Variance: ±{diff:.1f} pts ({trend_label})
+                    </span>
+                </div>
+            </div>
+            """)
 
     with col_right:
         st.markdown("### 🔍 Model Explainability (SHAP Attributions)")
@@ -480,30 +495,82 @@ def main():
     """)
 
     # =========================================================================
-    # ROW 3: MEASURED CRITERIA POLLUTANTS (CLEAN 6-COLUMN GRID)
+    # ROW 3: MEASURED CRITERIA POLLUTANTS (TIED TO SHAP DRIVERS)
     # =========================================================================
     st.markdown("### 📊 Measured Criteria Pollutants Snapshot")
+    st.caption("Cards are dynamically color-coded to match the SHAP explainability chart above (🔴 Worsening Driver | 🟢 Mitigating Factor | ⚪ Baseline).")
+
+    # Map top SHAP impact per pollutant column
+    shap_lookup = {}
+    for f in top_features:
+        shap_lookup[f["feature"]] = f
+
     chip_cols = st.columns(6)
     for idx, col in enumerate(POLLUTANT_COLS):
         val = pollutant_inputs[col]
         unit = "mg/m³" if col == "CO" else "µg/m³"
+
+        # Check if pollutant is a top SHAP driver
+        if col in shap_lookup:
+            s_val = shap_lookup[col]["shap_value"]
+            if s_val > 0:
+                card_style = "background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.6); box-shadow: 0 4px 14px rgba(239, 68, 68, 0.15);"
+                badge_html = f'<div style="color: #f87171; font-size: 0.68rem; font-weight: 700; margin-top: 4px;">▲ +{s_val:.1f} AQI impact</div>'
+                val_color = "#fca5a5"
+            else:
+                card_style = "background: rgba(16, 185, 129, 0.12); border: 1.5px solid rgba(16, 185, 129, 0.6); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);"
+                badge_html = f'<div style="color: #34d399; font-size: 0.68rem; font-weight: 700; margin-top: 4px;">▼ {s_val:.1f} AQI impact</div>'
+                val_color = "#6ee7b7"
+        else:
+            card_style = "background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.1);"
+            badge_html = '<div style="color: #64748b; font-size: 0.68rem; font-weight: 600; margin-top: 4px;">○ Baseline factor</div>'
+            val_color = "#f1f5f9"
+
         with chip_cols[idx]:
             st.html(f"""
-            <div class="pollutant-chip-box">
-                <div class="pollutant-chip-title">{col}</div>
-                <div class="pollutant-chip-value">{val:.1f}</div>
-                <div class="pollutant-chip-unit">{unit}</div>
+            <div style="{card_style} border-radius: 14px; padding: 12px 10px; text-align: center; height: 100%;">
+                <div style="font-size: 0.74rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">{col}</div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: {val_color}; margin: 2px 0;">{val:.1f}</div>
+                <div style="font-size: 0.7rem; color: #64748b; font-weight: 600;">{unit}</div>
+                {badge_html}
             </div>
             """)
 
     # =========================================================================
-    # ROW 4: AQI SEVERITY SPECTRUM
+    # ROW 4: HIGH-CONTRAST LUMINOUS AQI SEVERITY SPECTRUM
     # =========================================================================
-    st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
-    st.markdown("#### 🎯 AQI Severity Spectrum")
-    progress_val = min(1.0, max(0.0, predicted_aqi / 500.0))
-    st.progress(progress_val)
-    st.caption("0 (Good) ── 100 (Satisfactory) ── 200 (Moderate) ── 300 (Poor) ── 400 (Very Poor) ── 500+ (Severe)")
+    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+    st.markdown("#### 🎯 AQI Severity Spectrum (Central Pollution Control Board Standards)")
+
+    # Compute percentage position along 0-500 scale
+    pos_pct = min(98.5, max(1.5, (predicted_aqi / 500.0) * 100))
+
+    st.html(f"""
+    <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 20px 24px; margin-top: 8px;">
+        <!-- Spectrum Bar with Marker -->
+        <div style="position: relative; height: 42px; margin-bottom: 8px;">
+            <!-- Glowing Pin Position -->
+            <div style="position: absolute; left: calc({pos_pct:.1f}% - 40px); top: 0; text-align: center; width: 80px; z-index: 10;">
+                <span style="background: {bucket['color']}; color: {bucket['text_color']}; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 800; box-shadow: 0 0 10px {bucket['color']}; border: 1.5px solid white;">
+                    {predicted_aqi:.0f}
+                </span>
+                <div style="font-size: 0.7rem; color: {bucket['color']}; line-height: 1; margin-top: 1px;">▼</div>
+            </div>
+            <!-- Multi-Color Gradient Track -->
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 16px; border-radius: 10px; background: linear-gradient(to right, #009966 0%, #009966 10%, #7cb342 10%, #7cb342 20%, #ffb300 20%, #ffb300 40%, #fb8c00 40%, #fb8c00 60%, #e53935 60%, #e53935 80%, #880e4f 80%, #880e4f 100%); border: 1px solid rgba(255, 255, 255, 0.25); box-shadow: 0 4px 15px rgba(0,0,0,0.35);"></div>
+        </div>
+
+        <!-- Spectrum Legend Labels -->
+        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; font-size: 0.74rem; font-weight: 700; margin-top: 10px; text-align: center;">
+            <div style="color: #4ade80; border-top: 2px solid #009966; padding-top: 4px;">Good<br><span style="color: #94a3b8; font-weight: 500;">0 - 50</span></div>
+            <div style="color: #a3e635; border-top: 2px solid #7cb342; padding-top: 4px;">Satisfactory<br><span style="color: #94a3b8; font-weight: 500;">51 - 100</span></div>
+            <div style="color: #facc15; border-top: 2px solid #ffb300; padding-top: 4px;">Moderate<br><span style="color: #94a3b8; font-weight: 500;">101 - 200</span></div>
+            <div style="color: #fb923c; border-top: 2px solid #fb8c00; padding-top: 4px;">Poor<br><span style="color: #94a3b8; font-weight: 500;">201 - 300</span></div>
+            <div style="color: #f87171; border-top: 2px solid #e53935; padding-top: 4px;">Very Poor<br><span style="color: #94a3b8; font-weight: 500;">301 - 400</span></div>
+            <div style="color: #f472b6; border-top: 2px solid #880e4f; padding-top: 4px;">Severe<br><span style="color: #94a3b8; font-weight: 500;">401 - 500+</span></div>
+        </div>
+    </div>
+    """)
 
     # =========================================================================
     # ROW 5: DETAILED CPCB STANDARDS & GLOBAL SHAP SUMMARY
